@@ -1,0 +1,8 @@
+data/raw/
+data/processed/
+*.parquet
+__pycache__/
+*.pyc
+results_rerun_log.txt
+.ipynb_checkpoints/
+followup_log.txt

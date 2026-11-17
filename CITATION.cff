@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below."
+title: "cookfarm-soilwater-reconstruction: station-blocked benchmark for multi-depth soil-water reconstruction at unsensored locations"
+authors:
+  - name: "saurabh-chy"
+repository-code: "https://github.com/saurabh-chy/cookfarm-soilwater-reconstruction"
+license: MIT
+version: "0.1.0"
+date-released: "2026-11-17"

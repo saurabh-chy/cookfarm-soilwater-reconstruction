@@ -1,0 +1,8 @@
+{
+ "nearest_neighbour": 0.0,
+ "idw": 0.0,
+ "lgbm_A": 0.0,
+ "lgbm_B": 0.0,
+ "climatology": 0.0,
+ "mean": 0.0
+}
