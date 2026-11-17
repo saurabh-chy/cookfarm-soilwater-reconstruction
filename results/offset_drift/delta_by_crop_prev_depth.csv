@@ -1,0 +1,16 @@
+crop_prev,depth,mean,count
+legume,30,-0.0037,48
+legume,60,-0.0087,45
+legume,90,-0.0114,48
+legume,120,-0.013,46
+legume,150,-0.0114,45
+spring_cereal,30,0.0,65
+spring_cereal,60,-0.0033,62
+spring_cereal,90,0.0007,59
+spring_cereal,120,0.003,58
+spring_cereal,150,0.003,61
+winter_cereal,30,0.0024,72
+winter_cereal,60,0.0085,70
+winter_cereal,90,0.007,72
+winter_cereal,120,0.0061,70
+winter_cereal,150,0.0048,69

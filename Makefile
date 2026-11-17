@@ -5,9 +5,9 @@ PROC    := data/processed
 RES     := results
 export FOLDS := config/folds.csv
 
-.PHONY: all audit panel folds-check baselines evaluate followup calibration clean
+.PHONY: all audit panel folds-check baselines evaluate followup calibration drift clean
 
-all: audit panel folds-check baselines evaluate followup calibration
+all: audit panel folds-check baselines evaluate followup calibration drift
 
 audit:
 	$(PY) scripts/01_audit.py $(RAW) $(DAYMET) $(RES)/audit
@@ -32,6 +32,9 @@ followup: panel
 
 calibration:
 	$(PY) scripts/07_calibration.py
+
+drift: panel
+	$(PY) scripts/08_offset_drift.py
 
 clean:
 	rm -rf $(PROC) $(RES)/*.parquet $(RES)/audit/*.parquet

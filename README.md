@@ -2,7 +2,7 @@
 
 Station-blocked benchmark for reconstructing multi-depth soil water content at unsensored locations from a sparse sensor network at the R. J. Cook Agronomy Farm (CAF), Pullman, Washington, USA. The study covers sensor density, short calibration at new locations, and scale-recursive neural models. Every table in the reports can be regenerated from the scripts here.
 
-> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot) and 3a (short-calibration pilot) are complete. Neural baselines and the proposed model are next.
+> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot), 3a (short-calibration pilot) and 3b (offset-drift analysis) are complete. Neural baselines and the proposed model are next.
 
 ## Study design in brief
 - **Data:** 42 stations, five depths (30–150 cm), daily volumetric water content, 1 Jan 2011 – 16 Jun 2016, plus terrain, soil, crop and Daymet weather covariates.
@@ -33,9 +33,9 @@ Check the SHA-256 checksums given in `data/README.md`.
 
 ### 3. Run
 ```bash
-make all        # audit -> panel -> folds check -> baselines (+ leakage test) -> evaluate -> follow-up checks -> calibration
+make all        # audit -> panel -> folds check -> baselines (+ leakage test) -> evaluate -> follow-up checks -> calibration -> offset drift
 ```
-Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`. Runtime is about 30 minutes on 2 CPU cores.
+Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`. Runtime is about 30 minutes on 2 CPU cores.
 
 All randomness uses fixed seeds. `make folds-check` regenerates the folds and confirms they match the frozen `config/folds.csv`.
 
@@ -50,6 +50,7 @@ scripts/04_baselines.py     mean, climatology, nearest neighbour, IDW, ordinary 
 scripts/05_evaluate.py      station-level metrics, bootstrap CIs, paired tests, leakage check
 scripts/06_followup_checks.py  neighbour-anomaly and surveyed-covariate scenarios; 2015 test
 scripts/07_calibration.py   short-calibration experiment
+scripts/08_offset_drift.py  drivers of year-to-year station offset drift (crop, trend, wet year, sensor)
 results/                    summary tables (CSV/JSON); large prediction files are not committed
 reports/                    stage reports
 docs/                       concept note
@@ -66,6 +67,7 @@ docs/                       concept note
 - **Station offsets dominate:** 54–59% of each model's squared error is a constant station offset, and station mean levels are essentially unpredictable from covariates or neighbouring sensors.
 - **Dynamics are predictable:** temporal correlation is about 0.82.
 - **Short calibration:** a few spot readings at the target cut error by about 20%. Station offsets also drift from year to year by about 0.025 m³/m³.
+- **Crop rotation:** the current crop explains about 12% of that drift (22% at 150 cm; permutation p < 0.001). Winter cereals run drier and legumes wetter, mainly at depth. Sensor-drift trends and wet-year sensitivity show no predictive value.
 
 ## Data sources and citation
 - Gasch, C. K., et al. (2017). A field-scale sensor network data set for monitoring and modeling the spatial and temporal variation of soil water content in a dryland agricultural field. *Water Resources Research*, 53, 10878–10887. https://doi.org/10.1002/2017WR021307 Data: https://doi.org/10.15482/USDA.ADC/1349683

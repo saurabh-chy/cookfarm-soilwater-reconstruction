@@ -1,0 +1,125 @@
+{
+ "n_station_depth_years": 890,
+ "n_station_depths": 201,
+ "sd_delta": 0.025713878847304476,
+ "sd_station_level": 0.05715405789570258,
+ "annual_precip_mm": {
+  "2011": 651,
+  "2012": 774,
+  "2013": 493,
+  "2014": 599,
+  "2015": 580
+ },
+ "crop_source_disagreements_2010_2015": [
+  {
+   "field": "A",
+   "strip": 1,
+   "year": 2015,
+   "crop_txt": "WW",
+   "crop_shp": "SC"
+  },
+  {
+   "field": "B",
+   "strip": 1,
+   "year": 2015,
+   "crop_txt": "SC",
+   "crop_shp": "WW"
+  },
+  {
+   "field": "C",
+   "strip": 1,
+   "year": 2015,
+   "crop_txt": "SL",
+   "crop_shp": "WW"
+  },
+  {
+   "field": "A",
+   "strip": 2,
+   "year": 2015,
+   "crop_txt": "WW",
+   "crop_shp": "SC"
+  },
+  {
+   "field": "C",
+   "strip": 2,
+   "year": 2015,
+   "crop_txt": "SC",
+   "crop_shp": "SB"
+  },
+  {
+   "field": "B",
+   "strip": 3,
+   "year": 2015,
+   "crop_txt": "SC",
+   "crop_shp": "SW"
+  },
+  {
+   "field": "C",
+   "strip": 3,
+   "year": 2015,
+   "crop_txt": "SW",
+   "crop_shp": "SL"
+  },
+  {
+   "field": "A",
+   "strip": 4,
+   "year": 2015,
+   "crop_txt": "WW",
+   "crop_shp": "SL"
+  },
+  {
+   "field": "C",
+   "strip": 4,
+   "year": 2015,
+   "crop_txt": "SL",
+   "crop_shp": "WW"
+  },
+  {
+   "field": "A",
+   "strip": 5,
+   "year": 2015,
+   "crop_txt": "WW",
+   "crop_shp": "SC"
+  },
+  {
+   "field": "B",
+   "strip": 5,
+   "year": 2015,
+   "crop_txt": "SB",
+   "crop_shp": "SL"
+  },
+  {
+   "field": "B",
+   "strip": 6,
+   "year": 2015,
+   "crop_txt": "SL",
+   "crop_shp": "WW"
+  }
+ ],
+ "sd_delta_by_depth": {
+  "30": 0.0178,
+  "60": 0.0218,
+  "90": 0.0311,
+  "120": 0.0266,
+  "150": 0.0295
+ },
+ "loyo_cv_r2": {
+  "crop_now[CropID_txt]": 0.122,
+  "crop_prev[CropID_txt]": 0.017,
+  "crop_both[CropID_txt]": 0.096,
+  "crop_now[strips_shp]": 0.082,
+  "crop_prev[strips_shp]": 0.017,
+  "crop_both[strips_shp]": 0.068,
+  "trend": -1.599,
+  "wet_year": -7.997,
+  "sensor_year": -0.036
+ },
+ "permutation_p": {
+  "crop_now": 0.0,
+  "crop_both": 0.0
+ },
+ "permutation_null_95pct": {
+  "crop_now": -0.003,
+  "crop_both": -0.01
+ }
+}
