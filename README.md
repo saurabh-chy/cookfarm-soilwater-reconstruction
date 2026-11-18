@@ -2,7 +2,7 @@
 
 Station-blocked benchmark for reconstructing multi-depth soil water content at unsensored locations from a sparse sensor network at the R. J. Cook Agronomy Farm (CAF), Pullman, Washington, USA. The study covers sensor density, short calibration at new locations, and scale-recursive neural models. Every table in the reports can be regenerated from the scripts here.
 
-> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot), 3a (short-calibration pilot), 3b (offset-drift analysis) and the 3c neural pilot (one seed) are complete. Next are the multi-seed neural sweeps (`notebooks/run_neural_sweep.ipynb`), then the sensor-density curves and prediction intervals.
+> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot), 3a (short-calibration pilot), 3b (offset-drift analysis) the 3c neural pilot (one seed), and 4a–b (sensor-density curves and prediction intervals) are complete. Remaining: multi-seed neural sweeps (`notebooks/run_neural_sweep.ipynb`), the literature check and the manuscript.
 
 ## Study design in brief
 - **Data:** 42 stations, five depths (30–150 cm), daily volumetric water content, 1 Jan 2011 – 16 Jun 2016, plus terrain, soil, crop and Daymet weather covariates.
@@ -12,7 +12,7 @@ Station-blocked benchmark for reconstructing multi-depth soil water content at u
   - dynamics: deviation from each location's own mean
 - **Short calibration:** how much a brief record at a new location (spot readings or a short sensor window) improves reconstruction.
 
-The concept note is in `docs/concept_note_v2.4.docx`. Stage reports are in `reports/`.
+The concept note is in `docs/concept_note_v2.5.docx`. Stage reports are in `reports/`.
 
 ## Reproducing the results
 
@@ -35,7 +35,7 @@ Check the SHA-256 checksums given in `data/README.md`.
 ```bash
 make all        # audit -> panel -> folds check -> baselines (+ leakage test) -> evaluate -> follow-up checks -> calibration -> offset drift
 ```
-Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`, `make neural-pilot`. Runtime is about 30 minutes on 2 CPU cores.
+Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`, `make neural-pilot`, `make density`, `make intervals`. Runtime is about 30 minutes on 2 CPU cores.
 
 All randomness uses fixed seeds. `make folds-check` regenerates the folds and confirms they match the frozen `config/folds.csv`.
 
@@ -54,6 +54,8 @@ scripts/08_offset_drift.py  drivers of year-to-year station offset drift (crop, 
 scripts/09_neural.py        neural models: gcn, attn, proposed scale-recursive srn, srn_unshared ablation; --leak-test
 scripts/10_evaluate_neural.py  neural vs baselines for both targets, multi-seed
 notebooks/run_neural_sweep.ipynb  full models x folds x seeds sweep (Jupyter / Colab, GPU-aware)
+scripts/11_sensor_density.py   input network cut to 100-15% (random and spread placement); level and dynamics
+scripts/12_intervals.py        split-conformal 80/95% intervals from the reserved calibration stations
 results/                    summary tables (CSV/JSON); large prediction files are not committed
 reports/                    stage reports
 docs/                       concept note
@@ -71,6 +73,8 @@ docs/                       concept note
 - **Dynamics are predictable:** temporal correlation is about 0.82.
 - **Short calibration:** a few spot readings at the target cut error by about 20%. Station offsets also drift from year to year by about 0.025 m³/m³.
 - **Neural models (pilot):** graph, attention and the proposed scale-recursive model reach RMSE 0.071–0.073, at the level of IDW and below random forest (0.066), on both targets. Station anomalies show no scale structure (scaling exponent H ≈ 0–0.08), so the fractal premise is not supported at this site.
+- **Sensor density:** cutting the input network from about 34 to 5 stations raises IDW and kriging error by 0.006–0.008 m³/m³, but leaves gradient boosting flat (0.067–0.068). Even spatial placement is no better than random.
+- **Intervals:** calibration-station intervals reach about nominal pooled coverage (0.81 / 0.94) but are 0.19–0.29 m³/m³ wide, and they under-cover about a quarter of stations.
 - **Crop rotation:** the current crop explains about 12% of that drift (22% at 150 cm; permutation p < 0.001). Winter cereals run drier and legumes wetter, mainly at depth. Sensor-drift trends and wet-year sensitivity show no predictive value.
 
 ## Data sources and citation

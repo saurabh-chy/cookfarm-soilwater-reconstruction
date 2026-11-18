@@ -5,7 +5,7 @@ PROC    := data/processed
 RES     := results
 export FOLDS := config/folds.csv
 
-.PHONY: all audit panel folds-check baselines evaluate followup calibration drift neural-pilot clean
+.PHONY: all audit panel folds-check baselines evaluate followup calibration drift neural-pilot density intervals clean
 
 all: audit panel folds-check baselines evaluate followup calibration drift
 
@@ -41,6 +41,12 @@ neural-pilot: panel
 	for f in 0 1 2 3 4; do for m in gcn attn srn srn_unshared; do \
 	  $(PY) scripts/09_neural.py --model $$m --fold $$f --seed 0 || exit 1; done; done
 	$(PY) scripts/10_evaluate_neural.py --seeds 0
+
+density: panel
+	$(PY) scripts/11_sensor_density.py
+
+intervals: panel
+	$(PY) scripts/12_intervals.py
 
 clean:
 	rm -rf $(PROC) $(RES)/*.parquet $(RES)/audit/*.parquet
