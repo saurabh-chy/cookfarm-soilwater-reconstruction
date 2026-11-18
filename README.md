@@ -37,7 +37,7 @@ make all        # audit -> panel -> folds check -> baselines (+ leakage test) ->
 ```
 Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`, `make neural-pilot`, `make density`, `make intervals`. Runtime is about 30 minutes on 2 CPU cores.
 
-All randomness uses fixed seeds. `make folds-check` regenerates the folds and confirms they match the frozen `config/folds.csv`.
+Long steps are resumable: neural training checkpoints every epoch (an interrupted run resumes with identical results), baselines checkpoint every fold, and all outputs are written atomically. All randomness uses fixed seeds. `make folds-check` regenerates the folds and confirms they match the frozen `config/folds.csv`.
 
 ## Repository layout
 ```

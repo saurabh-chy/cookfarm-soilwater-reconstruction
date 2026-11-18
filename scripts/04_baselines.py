@@ -163,12 +163,34 @@ def ok_predict(R_idx, test_idx, d, p):
 
 
 # ---------- main loop ----------
+# Checkpoints: each finished fold is saved to OUT/checkpoints/ (atomic write); a rerun skips
+# finished folds, and the fold files are removed once the final output is written.
+CKD = os.path.join(OUT, 'checkpoints')
+os.makedirs(CKD, exist_ok=True)
+CKP = lambda k: os.path.join(CKD, f"baselines{'_leak' if LEAK else ''}_fold{k}")
+
+
+def atomic_parquet(df, path):
+    df.to_parquet(path + '.tmp'); os.replace(path + '.tmp', path)
+
+
+def atomic_json(obj, path):
+    with open(path + '.tmp', 'w') as fh:
+        json.dump(obj, fh, indent=1)
+    os.replace(path + '.tmp', path)
+
+
 preds = []
 meta = {}
 t0 = time.time()
 doy = dates.dayofyear.values
 fold_ids = [0] if LEAK else range(5)
 for k in fold_ids:
+    if os.path.exists(CKP(k) + '.parquet') and os.path.exists(CKP(k) + '.json'):
+        preds.append(pd.read_parquet(CKP(k) + '.parquet'))
+        meta[k] = json.load(open(CKP(k) + '.json'))
+        print(f'fold {k} loaded from checkpoint', flush=True)
+        continue
     role = np.array(folds.set_index('station')[f'role_fold{k}'].reindex(stations).tolist(), dtype=str)
     test_idx = np.where(role == 'test')[0]
     dev_idx = np.where(np.char.startswith(role, 'inner'))[0]
@@ -231,13 +253,19 @@ for k in fold_ids:
         base[name] = np.asarray(arr).ravel()
     base['clim_ref'] = np.asarray(P['climatology']).ravel()
     preds.append(base[base.obs.notna()])
+    atomic_json(meta[k], CKP(k) + '.json')
+    atomic_parquet(preds[-1], CKP(k) + '.parquet')
     print(f'fold {k} done {time.time() - t0:.0f}s', flush=True)
 
 pr = pd.concat(preds, ignore_index=True)
 if LEAK:
-    # rerun fold 0 without corruption and compare
-    pr.to_parquet(f'{OUT}/leak_fold0.parquet')
+    # compared against the uncorrupted run by scripts/05_evaluate.py
+    atomic_parquet(pr, f'{OUT}/leak_fold0.parquet')
 else:
-    pr.to_parquet(f'{OUT}/predictions.parquet')
-    json.dump(meta, open(f'{OUT}/fold_meta.json', 'w'), indent=1)
+    atomic_json({str(k): v for k, v in meta.items()}, f'{OUT}/fold_meta.json')
+    atomic_parquet(pr, f'{OUT}/predictions.parquet')
+for k in fold_ids:
+    for ext in ('.parquet', '.json'):
+        if os.path.exists(CKP(k) + ext):
+            os.remove(CKP(k) + ext)
 print('rows', len(pr))

@@ -19,6 +19,7 @@ Protocol (fold k, from config/folds.csv)
   normalisation   statistics from development stations only
 Outputs results/neural/{model}_f{k}_s{seed}.parquet with columns date, station, depth, fold, obs, pred.
 Usage: python scripts/09_neural.py --model srn --fold 0 --seed 0 [--leak-test] [--epochs 30]
+Checkpoints: results/neural/checkpoints/<run>.pt, saved every epoch; rerunning the same command resumes.
 """
 import argparse, os, time, json, math
 import numpy as np, pandas as pd, torch, torch.nn as nn
@@ -39,6 +40,8 @@ ap.add_argument('--folds', default='config/folds.csv')
 ap.add_argument('--out', default='results/neural')
 ap.add_argument('--leak-test', action='store_true')
 ap.add_argument('--threads', type=int, default=2)
+ap.add_argument('--no-resume', action='store_true', help='ignore an existing checkpoint and start over')
+ap.add_argument('--stop-after', type=int, default=None, help='testing only: exit after this epoch is checkpointed')
 a = ap.parse_args()
 os.makedirs(a.out, exist_ok=True)
 torch.set_num_threads(a.threads)
@@ -273,9 +276,58 @@ opt = torch.optim.AdamW([{'params': other, 'weight_decay': 1e-4},
                          {'params': off_params, 'weight_decay': 5e-2}], lr=a.lr)
 rng = np.random.default_rng(a.seed)
 train_idx_st = np.where(train_t)[0]
-best, bad, hist = 1e9, 0, []
+best, bad, hist, state, start_ep, stopped, elapsed0 = 1e9, 0, [], None, 0, False, 0.0
+tag = f'{a.model}_f{a.fold}_s{a.seed}' + ('_leak' if a.leak_test else '')
+
+# ---------------- checkpointing ----------------
+# After every epoch the full training state is saved (model, optimiser, best weights,
+# early-stopping counters, every random-number state). A stopped run resumes from the last
+# completed epoch and gives exactly the same result as an uninterrupted run. The checkpoint
+# is deleted once the final outputs are written. Writes are atomic (temp file + rename).
+CKPT_DIR = os.path.join(a.out, 'checkpoints')
+os.makedirs(CKPT_DIR, exist_ok=True)
+CKPT = os.path.join(CKPT_DIR, f'{tag}.pt')
+RUN_KEY = {k: v for k, v in vars(a).items() if k not in ('no_resume', 'stop_after', 'threads')}
+
+
+def atomic_save(obj, path, kind):
+    tmp = path + '.tmp'
+    if kind == 'torch':
+        torch.save(obj, tmp)
+    elif kind == 'json':
+        with open(tmp, 'w') as fh:
+            json.dump(obj, fh, indent=1)
+    elif kind == 'parquet':
+        obj.to_parquet(tmp)
+    os.replace(tmp, path)
+
+
+def save_checkpoint(ep):
+    atomic_save({'run_key': RUN_KEY, 'epoch': ep, 'net': net.state_dict(), 'opt': opt.state_dict(),
+                 'best': best, 'bad': bad, 'hist': hist, 'state': state, 'stopped': stopped,
+                 'elapsed': elapsed0 + time.time() - t0, 'np_rng': rng.bit_generator.state,
+                 'torch_rng': torch.get_rng_state(),
+                 'cuda_rng': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None},
+                CKPT, 'torch')
+
+
+if os.path.exists(CKPT) and not a.no_resume:
+    ck = torch.load(CKPT, map_location=dev_, weights_only=False)
+    if ck['run_key'] == RUN_KEY:
+        net.load_state_dict(ck['net']); opt.load_state_dict(ck['opt'])
+        best, bad, hist, state, stopped = ck['best'], ck['bad'], ck['hist'], ck['state'], ck['stopped']
+        rng.bit_generator.state = ck['np_rng']; torch.set_rng_state(ck['torch_rng'])
+        if ck['cuda_rng'] is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(ck['cuda_rng'])
+        start_ep, elapsed0 = ck['epoch'] + 1, ck['elapsed']
+        print(f'resuming {tag} from epoch {start_ep}' + (' (training already finished)' if stopped else ''), flush=True)
+    else:
+        print(f'checkpoint for {tag} was made with different settings; starting over', flush=True)
+
 t0 = time.time()
-for ep in range(a.epochs):
+for ep in range(start_ep, a.epochs):
+    if stopped:
+        break
     net.train()
     order = rng.permutation(T)
     tl = []
@@ -299,7 +351,7 @@ for ep in range(a.epochs):
             vd.append(ld.item()); vo.append(lo.item())
     vl = float(np.mean(vd) + np.mean(vo))
     hist.append({'epoch': ep, 'train': float(np.mean(tl)), 'val': vl, 'val_dyn': float(np.mean(vd)),
-                 'val_level': float(np.mean(vo)), 'sec': round(time.time() - t0)})
+                 'val_level': float(np.mean(vo)), 'sec': round(elapsed0 + time.time() - t0)})
     print(hist[-1], flush=True)
     if vl < best - 1e-4:
         best, bad = vl, 0
@@ -307,7 +359,13 @@ for ep in range(a.epochs):
     else:
         bad += 1
         if bad >= a.patience:
-            break
+            stopped = True
+    save_checkpoint(ep)
+    if a.stop_after is not None and ep >= a.stop_after:
+        print(f'stopping after epoch {ep} (--stop-after); rerun to resume', flush=True)
+        raise SystemExit(3)
+    if stopped:
+        break
 net.load_state_dict(state)
 
 # ---------------- predict test stations ----------------
@@ -329,12 +387,14 @@ out = pd.DataFrame({'date': dates[tt.ravel()], 'station': np.array(stations)[jj.
                     'obs': Vtrue[tt.ravel(), jj.ravel(), dd.ravel()],
                     'pred': P[tt.ravel(), jj.ravel(), dd.ravel()]})
 out = out[out.obs.notna()]
-tag = f'{a.model}_f{a.fold}_s{a.seed}' + ('_leak' if a.leak_test else '')
-out.to_parquet(f'{a.out}/{tag}.parquet')
 meta = {'model': a.model, 'fold': a.fold, 'seed': a.seed, 'params': nparams, 'epochs_run': len(hist),
-        'best_val_mse_z': best, 'seconds': round(time.time() - t0), 'device': str(dev_),
+        'best_val_mse_z': best, 'seconds': round(elapsed0 + time.time() - t0), 'device': str(dev_),
         'H_emp': H_emp, 'kappa0': kappa0, 'variogram_bins_m': hb, 'variogram_gamma_z': gb,
         'kappa_final': float(net.kappa.item()) if hasattr(net, 'kappa') else None,
         'val_inner_fold': val_name, 'args': vars(a), 'history': hist}
-json.dump(meta, open(f'{a.out}/{tag}.json', 'w'), indent=1)
+# the .parquet is written last: its presence marks the run as finished
+atomic_save(meta, f'{a.out}/{tag}.json', 'json')
+atomic_save(out, f'{a.out}/{tag}.parquet', 'parquet')
+if os.path.exists(CKPT):
+    os.remove(CKPT)
 print('done', tag, 'params', nparams, 'sec', meta['seconds'])
