@@ -2,7 +2,7 @@
 
 Station-blocked benchmark for reconstructing multi-depth soil water content at unsensored locations from a sparse sensor network at the R. J. Cook Agronomy Farm (CAF), Pullman, Washington, USA. The study covers sensor density, short calibration at new locations, and scale-recursive neural models. Every table in the reports can be regenerated from the scripts here.
 
-> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot), 3a (short-calibration pilot) and 3b (offset-drift analysis) are complete. Neural baselines and the proposed model are next.
+> Status: work in progress. Stages 1 (data audit), 2 (clean panel, frozen folds, baseline pilot), 3a (short-calibration pilot), 3b (offset-drift analysis) and the 3c neural pilot (one seed) are complete. Next are the multi-seed neural sweeps (`notebooks/run_neural_sweep.ipynb`), then the sensor-density curves and prediction intervals.
 
 ## Study design in brief
 - **Data:** 42 stations, five depths (30–150 cm), daily volumetric water content, 1 Jan 2011 – 16 Jun 2016, plus terrain, soil, crop and Daymet weather covariates.
@@ -21,7 +21,7 @@ The concept note is in `docs/concept_note_v2.4.docx`. Stage reports are in `repo
 conda env create -f environment.yml
 conda activate cookfarm-soilwater
 ```
-Or install with pip from `requirements.txt`. The results were produced with Python 3.13 and the pinned versions listed there.
+Or install with pip from `requirements.txt`, and from `requirements-neural.txt` for the neural models (PyTorch; preinstalled on Colab). The results were produced with Python 3.13 and the pinned versions listed there.
 
 ### 2. Data (not redistributed here)
 Download the two input files listed in [`data/README.md`](data/README.md) and place them as follows:
@@ -35,7 +35,7 @@ Check the SHA-256 checksums given in `data/README.md`.
 ```bash
 make all        # audit -> panel -> folds check -> baselines (+ leakage test) -> evaluate -> follow-up checks -> calibration -> offset drift
 ```
-Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`. Runtime is about 30 minutes on 2 CPU cores.
+Individual steps: `make audit`, `make panel`, `make folds-check`, `make baselines`, `make evaluate`, `make followup`, `make calibration`, `make drift`, `make neural-pilot`. Runtime is about 30 minutes on 2 CPU cores.
 
 All randomness uses fixed seeds. `make folds-check` regenerates the folds and confirms they match the frozen `config/folds.csv`.
 
@@ -51,6 +51,9 @@ scripts/05_evaluate.py      station-level metrics, bootstrap CIs, paired tests, 
 scripts/06_followup_checks.py  neighbour-anomaly and surveyed-covariate scenarios; 2015 test
 scripts/07_calibration.py   short-calibration experiment
 scripts/08_offset_drift.py  drivers of year-to-year station offset drift (crop, trend, wet year, sensor)
+scripts/09_neural.py        neural models: gcn, attn, proposed scale-recursive srn, srn_unshared ablation; --leak-test
+scripts/10_evaluate_neural.py  neural vs baselines for both targets, multi-seed
+notebooks/run_neural_sweep.ipynb  full models x folds x seeds sweep (Jupyter / Colab, GPU-aware)
 results/                    summary tables (CSV/JSON); large prediction files are not committed
 reports/                    stage reports
 docs/                       concept note
@@ -67,6 +70,7 @@ docs/                       concept note
 - **Station offsets dominate:** 54–59% of each model's squared error is a constant station offset, and station mean levels are essentially unpredictable from covariates or neighbouring sensors.
 - **Dynamics are predictable:** temporal correlation is about 0.82.
 - **Short calibration:** a few spot readings at the target cut error by about 20%. Station offsets also drift from year to year by about 0.025 m³/m³.
+- **Neural models (pilot):** graph, attention and the proposed scale-recursive model reach RMSE 0.071–0.073, at the level of IDW and below random forest (0.066), on both targets. Station anomalies show no scale structure (scaling exponent H ≈ 0–0.08), so the fractal premise is not supported at this site.
 - **Crop rotation:** the current crop explains about 12% of that drift (22% at 150 cm; permutation p < 0.001). Winter cereals run drier and legumes wetter, mainly at depth. Sensor-drift trends and wet-year sensitivity show no predictive value.
 
 ## Data sources and citation

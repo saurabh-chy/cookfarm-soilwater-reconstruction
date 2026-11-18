@@ -5,7 +5,7 @@ PROC    := data/processed
 RES     := results
 export FOLDS := config/folds.csv
 
-.PHONY: all audit panel folds-check baselines evaluate followup calibration drift clean
+.PHONY: all audit panel folds-check baselines evaluate followup calibration drift neural-pilot clean
 
 all: audit panel folds-check baselines evaluate followup calibration drift
 
@@ -35,6 +35,12 @@ calibration:
 
 drift: panel
 	$(PY) scripts/08_offset_drift.py
+
+# one-seed neural pilot (about 10 min on 2 CPU cores); full sweeps: notebooks/run_neural_sweep.ipynb
+neural-pilot: panel
+	for f in 0 1 2 3 4; do for m in gcn attn srn srn_unshared; do \
+	  $(PY) scripts/09_neural.py --model $$m --fold $$f --seed 0 || exit 1; done; done
+	$(PY) scripts/10_evaluate_neural.py --seeds 0
 
 clean:
 	rm -rf $(PROC) $(RES)/*.parquet $(RES)/audit/*.parquet
