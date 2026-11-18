@@ -6,3 +6,4 @@ __pycache__/
 results_rerun_log.txt
 .ipynb_checkpoints/
 followup_log.txt
+neural_results.zip
